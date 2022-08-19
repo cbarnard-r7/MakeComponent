@@ -1,3 +1,5 @@
+#! /usr/bin/env node
+
 const fs = require('fs/promises');
 const {
   program,
@@ -20,7 +22,7 @@ const makeComponent = (componentName, opt) => {
     propTypes,
   } = opt;
 
-  const componentTemplate = `${propTypes ? `import PropTypes from 'prop-types';\n\n` : ``}export const ${componentName} = (${propTypes ? `{` : ``}${props.map(({ name, defaultValue }) => `${name}${defaultValue ? ` = ${defaultValue}`: `` }`).join(', ')}${propTypes ? `}` : ``}) => {
+  const componentTemplate = `${propTypes ? `import PropTypes from 'prop-types';\n\n` : ``}export const ${componentName} = (${propTypes ? `{ ` : ``}${props.map(({ name, defaultValue }) => `${name}${defaultValue ? ` = ${defaultValue}` : ``}`).join(', ')}${propTypes ? ` }` : ``}) => {
   return (
     <></>
   );
@@ -34,15 +36,21 @@ ${props.map(({ name, required, type }) => {
         required && field.push(`isRequired`);
 
         return (`  ${name}: ${field.join(`.`)}`);
-      }).join(`\n\r`)}
-};`
+      }).join(`\n`)}
+};\n`
       :
       ``
     }
 export default ${componentName};`;
 
-  const testTemplate = `import { render, screen } from '@testing-library/react';
-import ${componentName} from './${componentName}';
+  const testTemplate = `import { render } from '@testing-library/react';
+${story ?
+      `import { composeStories } from '@storybook/testing-react';
+import * as stories from './${componentName}.stories';
+  
+const { Primary: ${componentName} } = composeStories(stories);`
+      :
+      `import ${componentName} from './${componentName}';`}
 
 describe('#<${componentName} />', () => {
   it('renders without errors', () => {
@@ -50,7 +58,7 @@ describe('#<${componentName} />', () => {
   })
 });`;
 
-  const storyTemplate = `import <${componentName} /> from './${componentName}';
+  const storyTemplate = `import ${componentName} from './${componentName}';
 
 export default {
   title: 'Components/${componentName}',
@@ -64,9 +72,9 @@ Primary.args = {
 ${props.map(({ name }) => (`  //${name}: ,`)).join(`\n`)}
 };`
 
-writeFile(componentTemplate, `${componentName}.js`);
-if(story) writeFile(storyTemplate, `${componentName}.stories.js`);
-if(test) writeFile(testTemplate, `${componentName}.test.js`);
+  writeFile(componentTemplate, `${componentName}.js`);
+  if (story) writeFile(storyTemplate, `${componentName}.stories.js`);
+  if (test) writeFile(testTemplate, `${componentName}.test.js`);
 
 
 };
@@ -75,7 +83,7 @@ const parseProps = (v, p) => {
   try {
     let [name, required = false, type = 'any', defaultValue = null] = v.split(':');
 
-    if(type == "string" && defaultValue) defaultValue = `"${defaultValue}"`
+    if (type == "string" && defaultValue) defaultValue = `"${defaultValue}"`
 
     return (
       p.concat([
